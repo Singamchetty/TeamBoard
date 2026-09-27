@@ -1,0 +1,303 @@
+{
+  "info": {
+    "name": "TeamBoard - B2B Knowledge Base API",
+    "description": "Postman collection covering the required test scenarios for the TeamBoard B2B Knowledge Base API Platform.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api" },
+    { "key": "client_access", "value": "" },
+    { "key": "client_api_key", "value": "" },
+    { "key": "admin_access", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register a new company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Response has access token and api_key', () => {",
+              "  pm.expect(body).to.have.property('access');",
+              "  pm.expect(body).to.have.property('api_key');",
+              "});",
+              "pm.collectionVariables.set('client_access', body.access);",
+              "pm.collectionVariables.set('client_api_key', body.api_key);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/auth/register/", "host": ["{{base_url}}"], "path": ["auth", "register", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"acmecorp\",\n  \"password\": \"securepass123\",\n  \"company_name\": \"Acme Corp\",\n  \"email\": \"dev@acmecorp.com\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Register with duplicate username",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/auth/register/", "host": ["{{base_url}}"], "path": ["auth", "register", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"acmecorp\",\n  \"password\": \"securepass123\",\n  \"company_name\": \"Acme Corp\",\n  \"email\": \"dev@acmecorp.com\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Login with valid credentials",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Response has access token', () => pm.expect(body).to.have.property('access'));",
+              "pm.collectionVariables.set('client_access', body.access);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"acmecorp\",\n  \"password\": \"securepass123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Login with wrong password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"acmecorp\",\n  \"password\": \"wrongpass\"\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Query KB - no token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/kb/query/", "host": ["{{base_url}}"], "path": ["kb", "query", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"search\": \"select_related\"\n}"
+        }
+      }
+    },
+    {
+      "name": "6. Query KB - valid token, keyword with results",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Has results list', () => pm.expect(body).to.have.property('results'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{client_access}}" }
+        ],
+        "url": { "raw": "{{base_url}}/kb/query/", "host": ["{{base_url}}"], "path": ["kb", "query", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"search\": \"select_related\"\n}"
+        }
+      }
+    },
+    {
+      "name": "7. Query KB - valid token, no matching results",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Count is 0 and results is empty', () => {",
+              "  pm.expect(body.count).to.eql(0);",
+              "  pm.expect(body.results).to.eql([]);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{client_access}}" }
+        ],
+        "url": { "raw": "{{base_url}}/kb/query/", "host": ["{{base_url}}"], "path": ["kb", "query", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"search\": \"zzz_no_match_zzz\"\n}"
+        }
+      }
+    },
+    {
+      "name": "8. Query KB - missing search field",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{client_access}}" }
+        ],
+        "url": { "raw": "{{base_url}}/kb/query/", "host": ["{{base_url}}"], "path": ["kb", "query", ""] },
+        "body": { "mode": "raw", "raw": "{}" }
+      }
+    },
+    {
+      "name": "9. Usage summary - CLIENT token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{client_access}}" } ],
+        "url": { "raw": "{{base_url}}/admin/usage-summary/", "host": ["{{base_url}}"], "path": ["admin", "usage-summary", ""] }
+      }
+    },
+    {
+      "name": "9b. Login as Admin (run after promoting role in PGAdmin)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Response has access token', () => pm.expect(body).to.have.property('access'));",
+              "pm.collectionVariables.set('admin_access', body.access);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"acmecorp\",\n  \"password\": \"securepass123\"\n}"
+        },
+        "description": "Re-logs in as 'acmecorp' and captures a fresh token into admin_access. Only produces an admin-authorized token if you've already promoted this company's Company.role to 'admin' in PGAdmin (or the Django shell) - otherwise this token behaves identically to client_access and request 10 will still 403."
+      }
+    },
+    {
+      "name": "10. Usage summary - Admin token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Has usage stats', () => {",
+              "  pm.expect(body).to.have.property('total_queries');",
+              "  pm.expect(body).to.have.property('active_companies');",
+              "  pm.expect(body).to.have.property('top_search_terms');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{admin_access}}" } ],
+        "url": { "raw": "{{base_url}}/admin/usage-summary/", "host": ["{{base_url}}"], "path": ["admin", "usage-summary", ""] },
+        "description": "Requires a company whose role has been promoted to 'admin' (e.g. via PGAdmin). Set the collection variable admin_access to that company's JWT before running."
+      }
+    },
+    {
+      "name": "11. Verify QueryLog created (PGAdmin check)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/admin/usage-summary/", "host": ["{{base_url}}"], "path": ["admin", "usage-summary", ""] },
+        "description": "Not an API call to verify - open PGAdmin, connect to the teamboard database, and confirm rows exist in the query_logs table after running requests 6 and 7."
+      }
+    }
+  ]
+}
