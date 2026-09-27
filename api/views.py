@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import KBEntry, QueryLog
+from .permissions import IsAdminUser
 from .serializers import (
     KBEntrySerializer,
     KBQuerySerializer,
@@ -108,6 +109,28 @@ class KBQueryView(APIView):
                 'search': search_term,
                 'count': len(results),
                 'results': KBEntrySerializer(results, many=True).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class UsageSummaryView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        total_queries = QueryLog.objects.aggregate(total=Count('id'))['total']
+        active_companies = QueryLog.objects.values('company').distinct().count()
+        top_search_terms = list(
+            QueryLog.objects.values('search_term')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:5]
+        )
+
+        return Response(
+            {
+                'total_queries': total_queries,
+                'active_companies': active_companies,
+                'top_search_terms': top_search_terms,
             },
             status=status.HTTP_200_OK,
         )
