@@ -1,11 +1,20 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.db import transaction
+from django.db.models import Q
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import LoginSerializer, RegisterSerializer
+from .models import KBEntry, QueryLog
+from .serializers import (
+    KBEntrySerializer,
+    KBQuerySerializer,
+    LoginSerializer,
+    RegisterSerializer,
+)
 
 
 def _issue_access_token(user):
@@ -68,6 +77,37 @@ class LoginView(APIView):
                 'access': _issue_access_token(user),
                 'company_name': company.company_name,
                 'api_key': company.api_key,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class KBQueryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = KBQuerySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        search_term = serializer.validated_data['search']
+
+        company = request.user.company
+
+        with transaction.atomic():
+            entries = KBEntry.objects.filter(
+                Q(question__icontains=search_term) | Q(answer__icontains=search_term)
+            )
+            results = list(entries)
+            QueryLog.objects.create(
+                company=company,
+                search_term=search_term,
+                results_count=len(results),
+            )
+
+        return Response(
+            {
+                'search': search_term,
+                'count': len(results),
+                'results': KBEntrySerializer(results, many=True).data,
             },
             status=status.HTTP_200_OK,
         )
